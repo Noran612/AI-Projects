@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chatbot Test</title>
+    <link rel="stylesheet" type="text/css" href="../static/styles.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            Chat with our Assistant
+        </div>
+        <div class="chat-box" id="response-container"></div>
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Type your message here" />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    <script>
+        function sendMessage() {
+            const userInput = document.getElementById('user-input').value;
+            if (userInput.trim() === "") return;
+
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message user';
+            userMessageDiv.innerHTML = userInput;
+            document.getElementById('response-container').appendChild(userMessageDiv);
+            document.getElementById('user-input').value = '';
+
+            const payload = JSON.stringify({ "message": userInput });
+
+            fetch('http://127.0.0.1:5000/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: payload
+            }).then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                const responseContainer = document.getElementById('response-container');
+
+                function readStream() {
+                    return reader.read().then(({ done, value }) => {
+                        if (done) {
+                            console.log('Stream complete');
+                            responseContainer.scrollTop = responseContainer.scrollHeight;  // Auto scroll to bottom
+                            return;
+                        }
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        console.log('Chunk:', chunk);  // Log each chunk
+                        const responseDiv = document.createElement('div');
+                        responseDiv.className = 'message bot';
+                        responseDiv.innerHTML = chunk;  // Append each chunk to the response div
+                        responseContainer.appendChild(responseDiv);
+                        responseContainer.scrollTop = responseContainer.scrollHeight;  // Auto scroll to bottom
+                        readStream();
+                    });
+                }
+
+                readStream();
+            }).catch(error => {
+                console.error('Fetch error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
